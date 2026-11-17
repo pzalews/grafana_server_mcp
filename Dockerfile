@@ -1,6 +1,6 @@
 # Fully qualified image names so the build also works with rootless Podman.
 
-FROM docker.io/library/python:3.12-slim AS builder
+FROM docker.io/library/python:3.15-slim AS builder
 
 WORKDIR /app
 
@@ -13,7 +13,7 @@ RUN uv pip install --system --no-cache .
 
 # gcx: downloaded from the official grafana/gcx GitHub release and verified against
 # the release's checksum file.
-FROM docker.io/library/python:3.12-slim AS gcx
+FROM docker.io/library/python:3.15-slim AS gcx
 
 ARG GCX_VERSION=1.7.1
 ARG TARGETARCH
@@ -32,7 +32,7 @@ RUN set -eu; \
     install -m 0755 gcx /usr/local/bin/gcx; \
     /usr/local/bin/gcx version
 
-FROM docker.io/library/python:3.12-slim
+FROM docker.io/library/python:3.15-slim
 
 WORKDIR /app
 
