@@ -11,11 +11,13 @@ references through the OS keyring and writes GRAFANA_* variables. Tokens are nev
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -114,7 +116,14 @@ def collect(
                 service, user = parse_keychain_ref(token)
             except ValueError:
                 raise SystemExit(f"context '{name}': malformed keychain reference") from None
-            secret = get_password(service, user)
+            try:
+                secret = get_password(service, user)
+            except Exception:
+                # Fixed message on purpose: the exception text could echo the reference.
+                raise SystemExit(
+                    f"context '{name}': keyring unavailable or locked "
+                    "(unlock your keyring and retry)"
+                ) from None
             if not secret:
                 raise SystemExit(f"context '{name}': keyring entry not found (is it unlocked?)")
             token = unwrap_token(secret)
@@ -143,24 +152,32 @@ def render_block(envs: list[ExportedEnv]) -> str:
 
 
 def merge_env(existing: str | None, block: str) -> str:
+    """Replace the marked block (the first one; later duplicates are dropped) or append it.
+
+    Raises SystemExit if a BEGIN marker has no matching END, so no user lines are lost.
+    """
     if not existing:
         return block
-    lines = existing.splitlines()
     out: list[str] = []
     replaced = False
     skipping = False
-    for ln in lines:
+    for ln in existing.splitlines():
+        if skipping:
+            if ln.strip() == END:
+                skipping = False
+            continue
         if ln.strip() == BEGIN:
             skipping = True
             if not replaced:
                 out.append(block.rstrip("\n"))
                 replaced = True
             continue
-        if skipping:
-            if ln.strip() == END:
-                skipping = False
-            continue
         out.append(ln)
+    if skipping:
+        raise SystemExit(
+            "existing file has a grafana-mcp BEGIN marker without a matching END marker; "
+            "fix or remove it manually (nothing was written)"
+        )
     if not replaced:
         out.append(block.rstrip("\n"))
     return "\n".join(out) + "\n"
@@ -170,6 +187,21 @@ def _keyring_get_password(service: str, user: str) -> str | None:
     import keyring
 
     return keyring.get_password(service, user)
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    """Write via a 0600 temp file in the same directory, then rename over the target."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -199,10 +231,7 @@ def main(argv: list[str] | None = None) -> int:
 
     existing = out.read_text() if out.exists() else None
     content = merge_env(existing, render_block(envs))
-    fd = os.open(out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as fh:
-        fh.write(content)
-    os.chmod(out, 0o600)
+    _atomic_write(out, content)
     print(f"Wrote {len(envs)} environments to {out}: {', '.join(e.name for e in envs)}")
     return 0
 

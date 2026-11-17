@@ -175,3 +175,70 @@ def test_main_refuses_existing_without_force(
 @pytest.mark.parametrize("name", ["dev", "stg-west", "a.b c", "prod_1"])
 def test_prefix_matches_server(name: str) -> None:
     assert m.env_prefix(name) == server_env_prefix(name)
+
+
+def test_merge_env_unterminated_block_refuses() -> None:
+    with pytest.raises(SystemExit):
+        m.merge_env(f"A=1\n{m.BEGIN}\nGRAFANA_X=1\nB=2\n", "block\n")
+
+
+def test_merge_env_duplicate_blocks_collapse_to_one() -> None:
+    blk = m.render_block([m.ExportedEnv("dev", "https://g.example.com", "glsa_old", 1)])
+    new = m.render_block([m.ExportedEnv("dev", "https://g.example.com", "glsa_new", 1)])
+    merged = m.merge_env(f"A=1\n{blk}B=2\n{blk}C=3\n", new)
+    assert merged.count(m.BEGIN) == 1
+    assert "glsa_old" not in merged
+    assert all(x in merged for x in ("A=1", "B=2", "C=3"))
+
+
+def test_main_unterminated_block_leaves_file_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_main(monkeypatch)
+    out = tmp_path / "out.env"
+    original = f"A=1\n{m.BEGIN}\nB=2\n"
+    out.write_text(original)
+    with pytest.raises(SystemExit):
+        m.main(["--output", str(out), "--contexts", "dev", "--force"])
+    assert out.read_text() == original
+
+
+def test_main_force_existing_0644_ends_0600_keeps_lines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_main(monkeypatch)
+    out = tmp_path / "out.env"
+    out.write_text("KEEP=1\n")
+    out.chmod(0o644)
+    assert m.main(["--output", str(out), "--contexts", "dev", "--force"]) == 0
+    assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
+    assert "KEEP=1" in out.read_text()
+    assert [p.name for p in tmp_path.iterdir()] == ["out.env"]
+
+
+def test_main_write_failure_leaves_original_intact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_main(monkeypatch)
+    out = tmp_path / "out.env"
+    out.write_text("KEEP=1\n")
+
+    def boom(src: Any, dst: Any) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(m.os, "replace", boom)
+    with pytest.raises(OSError):
+        m.main(["--output", str(out), "--contexts", "dev", "--force"])
+    assert out.read_text() == "KEEP=1\n"
+    assert [p.name for p in tmp_path.iterdir()] == ["out.env"]
+
+
+def test_collect_keyring_error_names_context_only() -> None:
+    def locked(service: str, user: str) -> str | None:
+        raise RuntimeError("secret ref v2:a:b")
+
+    with pytest.raises(SystemExit) as exc:
+        m.collect(_cfg(), {"prod"}, locked)
+    msg = str(exc.value)
+    assert "prod" in msg
+    assert "v2:a:b" not in msg
