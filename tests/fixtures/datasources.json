@@ -1,0 +1,10 @@
+{
+  "datasources": [
+    {"uid": "prom-uid-1", "name": "Prometheus", "type": "prometheus",
+     "url": "https://grafana.example.com/api/datasources/proxy/1", "access": "proxy",
+     "default": true, "readOnly": false},
+    {"uid": "loki-uid-1", "name": "Loki", "type": "loki",
+     "url": "https://grafana.example.com/api/datasources/proxy/2", "access": "proxy",
+     "default": false, "readOnly": false}
+  ]
+}
