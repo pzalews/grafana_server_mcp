@@ -1,0 +1,41 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "streams",
+    "result": [
+      {
+        "stream": {
+          "app": "ingress-gateway",
+          "level": "error"
+        },
+        "values": [
+          {
+            "timestamp": "1700000001000000000",
+            "line": "upstream connect error"
+          },
+          {
+            "timestamp": "1700000003000000000",
+            "line": "upstream timeout"
+          }
+        ]
+      },
+      {
+        "stream": {
+          "app": "api",
+          "level": "info"
+        },
+        "values": [
+          {
+            "timestamp": "1700000002000000000",
+            "line": "request handled"
+          }
+        ]
+      }
+    ],
+    "stats": {
+      "summary": {
+        "execTime": 0.02
+      }
+    }
+  }
+}

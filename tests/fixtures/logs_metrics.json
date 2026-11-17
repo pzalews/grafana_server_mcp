@@ -1,0 +1,23 @@
+{
+  "status": "success",
+  "data": {
+    "resultType": "matrix",
+    "result": [
+      {
+        "metric": {
+          "app": "api"
+        },
+        "values": [
+          [
+            1700000000,
+            "12"
+          ],
+          [
+            1700000060,
+            "7"
+          ]
+        ]
+      }
+    ]
+  }
+}
