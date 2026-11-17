@@ -1,6 +1,6 @@
 # Fully qualified image names so the build also works with rootless Podman.
 
-FROM docker.io/library/python:3.12-slim AS builder
+FROM docker.io/library/python:3.15-slim AS builder
 
 WORKDIR /app
 
@@ -9,11 +9,15 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml ./
 COPY src/ src/
 
-RUN uv pip install --system --no-cache .
+# Install into a virtualenv so the runtime stage copies a version-independent path
+# (/opt/venv) instead of /usr/local/lib/python3.X/site-packages. This lets base-image
+# bumps (e.g. Dependabot) change only the FROM lines.
+RUN python -m venv /opt/venv \
+    && uv pip install --python /opt/venv/bin/python --no-cache .
 
 # gcx: downloaded from the official grafana/gcx GitHub release and verified against
 # the release's checksum file.
-FROM docker.io/library/python:3.12-slim AS gcx
+FROM docker.io/library/python:3.15-slim AS gcx
 
 ARG GCX_VERSION=1.7.1
 ARG TARGETARCH
@@ -32,14 +36,12 @@ RUN set -eu; \
     install -m 0755 gcx /usr/local/bin/gcx; \
     /usr/local/bin/gcx version
 
-FROM docker.io/library/python:3.12-slim
+FROM docker.io/library/python:3.15-slim
 
 WORKDIR /app
 
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin/grafana-mcp /usr/local/bin/grafana-mcp
+COPY --from=builder /opt/venv /opt/venv
 COPY --from=gcx /usr/local/bin/gcx /usr/local/bin/gcx
-COPY src/ src/
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh \
@@ -48,6 +50,7 @@ RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh \
     && chown mcp /var/log/grafana-mcp
 USER mcp
 
+ENV PATH=/opt/venv/bin:$PATH
 ENV MCP_TRANSPORT=http
 ENV MCP_HTTP_HOST=0.0.0.0
 ENV MCP_HTTP_PORT=8000
