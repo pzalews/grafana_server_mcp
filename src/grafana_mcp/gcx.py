@@ -117,56 +117,78 @@ def _size(data: Any) -> int:
     return len(json.dumps(data))
 
 
-def _largest(node: Any, kind: type) -> tuple[Any, Any, int] | None:
-    """Find the largest non-empty value of `kind` in node: (parent, key, size)."""
-    best: tuple[Any, Any, int] | None = None
-    children: Iterable[tuple[Any, Any]]
-    if isinstance(node, dict):
-        children = node.items()
-    elif isinstance(node, list):
-        children = enumerate(node)
-    else:
-        return None
-    for key, child in children:
-        if isinstance(child, kind) and child:
-            size = _size(child)
-            if best is None or size > best[2]:
-                best = (node, key, size)
-        sub = _largest(child, kind)
-        if sub is not None and (best is None or sub[2] > best[2]):
-            best = sub
-    return best
+def _entry_size(key: Any, value: Any) -> int:
+    # Serialized size of one list item / dict entry, including its ", " separator.
+    key_size = len(json.dumps(key)) + 2 if isinstance(key, str) else 0
+    return key_size + _size(value) + 2
 
 
-def _trim_list(lst: list[Any], overshoot: int) -> None:
-    """Drop items from the end of lst until at least `overshoot` chars are removed."""
+def _cut_string(text: str, budget: int) -> str:
+    """Longest prefix of text (plus "...") whose JSON encoding fits budget chars."""
+    lo, hi = 0, len(text) - 1  # hi < len(text): always remove at least one char
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if _size(text[:mid] + "...") <= budget:
+            lo = mid
+        else:
+            hi = mid - 1
+    return text[:lo] + "..." if lo else ""
+
+
+def _shrink(holder: list[Any], overshoot: int) -> bool:
+    """Remove at least `overshoot` serialized chars from holder[0], as precisely as possible.
+
+    Walk down from the top: at each container look at the entry that would be removed next
+    (the last list item, or the largest dict value). If removing it would drop at least the
+    overshoot, descend into it (or cut it, if it is a string) so that a single huge series or
+    stream is trimmed inside rather than dropped. Otherwise drop entries from the end of the
+    current container until the overshoot is covered. Returns False if nothing could shrink.
+    """
+    target: Any = holder
+    while True:
+        if isinstance(target, list):
+            if not target:
+                return False
+            key: Any = len(target) - 1
+        elif isinstance(target, dict):
+            if not target:
+                return False
+            key = max(target, key=lambda k: _size(target[k]))
+        else:
+            return False
+        child = target[key]
+        if _size(child) < overshoot:
+            break
+        if isinstance(child, (list, dict)) and child:
+            target = child
+            continue
+        if isinstance(child, str) and child:
+            target[key] = _cut_string(child, _size(child) - overshoot)
+            return True
+        break  # an atom at least as large as the overshoot: drop entries from the end
+    if target is holder:  # never drop the whole result; replace an unshrinkable atom instead
+        holder[0] = None
+        return True
     removed = 0
-    while lst and removed < overshoot:
-        removed += _size(lst.pop()) + 2  # item plus ", " separator
+    while target and removed < overshoot:
+        if isinstance(target, list):
+            removed += _entry_size(None, target.pop())
+        else:
+            k, v = target.popitem()
+            removed += _entry_size(k, v)
+    return True
 
 
 def fit_result(data: Any, max_chars: int) -> dict[str, Any]:
-    """Wrap data as a tool result, trimming lists (then strings) to fit max_chars."""
+    """Wrap data as a tool result; `json.dumps(result)` is guaranteed to fit max_chars."""
     if _size(data) <= max_chars:
         return {"result": data, "truncated": False}
 
     holder: list[Any] = [copy.deepcopy(data)]  # wrapper so the top level is trimmable too
     while (current := _size(holder[0])) > max_chars:
-        overshoot = current - max_chars
-        found = _largest(holder, list)
-        if found is not None:
-            parent, key, _ = found
-            _trim_list(parent[key], overshoot)
-            continue
-        found = _largest(holder, str)
-        if found is not None:
-            parent, key, _ = found
-            text: str = parent[key]
-            keep = max(0, len(text) - overshoot - 3)
-            parent[key] = text[:keep] + "..." if keep else ""
-            continue
-        holder[0] = json.dumps(holder[0])[: max(0, max_chars - 2)]  # last resort
-        break
+        if not _shrink(holder, current - max_chars):
+            holder[0] = None
+            break
 
     return {
         "result": holder[0],

@@ -160,6 +160,56 @@ def test_fit_result_cuts_string_as_last_resort() -> None:
     assert out["result"]["s"].startswith("yyy")
 
 
+def test_fit_result_single_prometheus_series_keeps_values() -> None:
+    values = [[1_700_000_000 + i * 15, str(i)] for i in range(20_000)]
+    data = {
+        "data": {
+            "resultType": "matrix",
+            "result": [{"metric": {"__name__": "up", "job": "a"}, "values": values}],
+        }
+    }
+    out = fit_result(data, 50_000)
+    assert out["truncated"] is True
+    assert len(json.dumps(out["result"])) <= 50_000
+    series = out["result"]["data"]["result"]
+    assert len(series) == 1
+    assert series[0]["metric"] == {"__name__": "up", "job": "a"}
+    kept = series[0]["values"]
+    assert 0 < len(kept) < len(values)
+    assert kept == values[: len(kept)]
+    assert len(json.dumps(out["result"])) > 40_000  # trimmed close to the cap, not emptied
+
+
+def test_fit_result_single_loki_stream_keeps_values() -> None:
+    values = [
+        [str(1_700_000_000_000_000_000 + i), f"log line {i} " + "x" * 40] for i in range(5000)
+    ]
+    data = [{"stream": {"app": "x"}, "values": values}]
+    out = fit_result(data, 20_000)
+    assert out["truncated"] is True
+    assert len(json.dumps(out["result"])) <= 20_000
+    assert len(out["result"]) == 1
+    kept = out["result"][0]["values"]
+    assert 0 < len(kept) < len(values)
+    assert kept == values[: len(kept)]
+
+
+def test_fit_result_many_keys_dict_fits_cap() -> None:
+    data = {f"key{i}": "" for i in range(20_000)}
+    out = fit_result(data, 50_000)
+    assert out["truncated"] is True
+    assert isinstance(out["result"], dict)
+    assert 0 < len(out["result"]) < len(data)
+    assert len(json.dumps(out["result"])) <= 50_000
+    assert len(json.dumps(out)) <= 50_000 + 200
+
+
+def test_fit_result_string_with_escapes_fits_cap() -> None:
+    out = fit_result({"s": '"' * 10_000}, 500)
+    assert len(json.dumps(out["result"])) <= 500
+    assert out["result"]["s"].startswith('"')
+
+
 # --- GcxRunner --------------------------------------------------------------------------
 
 
