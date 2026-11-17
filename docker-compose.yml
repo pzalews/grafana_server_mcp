@@ -1,0 +1,45 @@
+services:
+  grafana-mcp:
+    build: .
+    env_file: .env
+    # Published on localhost only: the MCP endpoint has no authentication.
+    ports:
+      - "127.0.0.1:${GRAFANA_MCP_PORT:-8003}:8000"
+    environment:
+      - GRAFANA_LOG_PATH=/var/log/grafana-mcp/server.log
+    tmpfs:
+      - /tmp
+    volumes:
+      # Optional extra CA bundle (TLS-intercepting proxy); /dev/null means "none".
+      - "${GRAFANA_EXTRA_CA_FILE:-/dev/null}:/run/extra-ca.pem:ro"
+      - mcp_logs:/var/log/grafana-mcp
+    restart: unless-stopped
+    healthcheck:
+      # CMD-SHELL with one string: Podman splits exec-form arguments on spaces.
+      # A bare GET on /mcp is rejected by the MCP endpoint, so send an `initialize`.
+      test:
+        - CMD-SHELL
+        - >-
+          python -c 'import json, urllib.request;
+          b = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params":
+          {"protocolVersion": "2025-03-26", "capabilities": {},
+          "clientInfo": {"name": "healthcheck", "version": "0"}}}).encode();
+          r = urllib.request.Request("http://localhost:8000/mcp", data=b, headers=
+          {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"});
+          urllib.request.urlopen(r, timeout=5).read()'
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    # Last resort if Grafana is reachable from the host but not from the container
+    # (see README, Troubleshooting). With host networking, port publishing does not apply,
+    # so the server itself must bind to localhost: remove the `ports:` block above and use
+    #
+    # network_mode: host
+    # environment:
+    #   - GRAFANA_LOG_PATH=/var/log/grafana-mcp/server.log
+    #   - MCP_HTTP_HOST=127.0.0.1
+    #   - MCP_HTTP_PORT=8003
+
+volumes:
+  mcp_logs:
