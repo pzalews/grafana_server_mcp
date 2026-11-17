@@ -28,16 +28,17 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
     envs = settings.environments()
     config_dir = Path(settings.grafana_gcx_config_dir) if settings.grafana_gcx_config_dir else None
     config_path = write_gcx_config(envs, config_dir)
-    runner = GcxRunner(
-        gcx_path=settings.grafana_gcx_path,
-        config_path=config_path,
-        timeout=settings.grafana_gcx_timeout,
-        max_concurrency=settings.grafana_max_concurrency,
-        secrets=[e.token.get_secret_value() for e in envs],
-        passthrough_env=os.environ,
-    )
-    log.info("grafana_mcp.startup", **settings.redacted())
+    runner: GcxRunner | None = None
     try:
+        runner = GcxRunner(
+            gcx_path=settings.grafana_gcx_path,
+            config_path=config_path,
+            timeout=settings.grafana_gcx_timeout,
+            max_concurrency=settings.grafana_max_concurrency,
+            secrets=[e.token.get_secret_value() for e in envs],
+            passthrough_env=os.environ,
+        )
+        log.info("grafana_mcp.startup", **settings.redacted())
         yield {
             "settings": settings,
             "envs": {e.name: e for e in envs},
@@ -45,8 +46,12 @@ async def _lifespan(server: FastMCP) -> AsyncIterator[dict[str, Any]]:
             "ds_cache": {},
         }
     finally:
-        runner.close()
-        shutil.rmtree(config_path.parent, ignore_errors=True)
+        if runner is not None:
+            runner.close()
+        if config_dir is None:  # directory created by us (mkdtemp): remove it entirely
+            shutil.rmtree(config_path.parent, ignore_errors=True)
+        else:  # user-supplied directory: remove only our file
+            config_path.unlink(missing_ok=True)
         log.info("grafana_mcp.shutdown")
 
 
