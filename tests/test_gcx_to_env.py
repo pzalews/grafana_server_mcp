@@ -84,11 +84,19 @@ def test_collect_plain_and_keychain() -> None:
     assert by_name["prod"].org_id == 1
 
 
-def test_collect_skips_default_context() -> None:
+def test_collect_empty_default_context_skipped_quietly() -> None:
     envs, warnings = m.collect(_cfg(), None, _get_password)
     assert "default" not in [e.name for e in envs]
+    assert not any("'default'" in w for w in warnings)
     assert any("nostack" in w for w in warnings)
     assert any("orphan" in w for w in warnings)
+
+
+def test_collect_exports_default_context_with_stack() -> None:
+    cfg = _cfg()
+    cfg["contexts"]["default"] = {"stack": "dev"}
+    envs, _ = m.collect(cfg, None, _get_password)
+    assert "default" in [e.name for e in envs]
 
 
 def test_collect_skips_non_token_auth() -> None:

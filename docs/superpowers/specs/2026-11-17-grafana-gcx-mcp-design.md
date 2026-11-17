@@ -155,7 +155,7 @@ All tools are read-only and every one requires `env` (an environment name from `
 ## Runtime / Docker
 
 - **Image:** multi-stage on `python:3.12-slim`, non-root `mcp` user, like bitbucket. gcx binary downloaded from its official GitHub release, version pinned via build arg (`GCX_VERSION=1.7.1`) with checksum verification against the release's checksum file; the builder must look up the real release repo/asset naming. Image contains no config and no secrets.
-- **Compose:** single service, `env_file: .env`, port published on **localhost only**: `127.0.0.1:${GRAFANA_MCP_PORT:-8003}:8000` (default host port 8003 because the sibling bitbucket server already uses 8000; configurable), `tmpfs: /run/gcx`, log volume, `restart: unless-stopped`, healthcheck as in bitbucket.
+- **Compose:** single service, `env_file: .env`, port published on **localhost only**: `127.0.0.1:${GRAFANA_MCP_PORT:-8004}:8000` (default host port 8004 because 8000–8003 are used by the sibling MCP servers; configurable), `tmpfs: /run/gcx`, log volume, `restart: unless-stopped`, healthcheck as in bitbucket.
 - **Network access to Grafana:** the Grafana instances are only reachable through a corporate VPN (with an additional HTTP proxy) or Zscaler Private Access on the host. Verified 2026-11-17 on the user's machine: with ZPA connected, a plain rootless Podman container on the default network reached a Grafana `/api/health` with **strict TLS verification** (HTTP 200) — so DNS, routing and the server certificate all work from a container without extra setup. Therefore:
   - Default compose uses normal (bridge) networking, no `network_mode: host`.
   - Optional proxy pass-through for the VPN+proxy case: `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY` read from `.env` (empty by default) and passed to the gcx subprocess (gcx is Go and honours them). Never written into logs.
@@ -165,7 +165,7 @@ All tools are read-only and every one requires `env` (an environment name from `
 - **Container runtime:** the user's `docker` is **Podman 4.9 (rootless)** with `/usr/bin/docker-compose` as the compose provider. Dockerfile and compose must work under Podman: fully qualified base image names (`docker.io/library/python:3.12-slim`), no Docker-only compose features, healthcheck via Python (not curl). Plain Docker should work too.
 - **Transport:** `MCP_TRANSPORT=http` in the image; stdio still supported for local dev (`MCP_TRANSPORT=stdio`, using the same env vars).
 - **Limits (settings):** per-call gcx timeout (default 60s), max concurrent gcx processes (default 4), max result chars.
-- **Client registration:** `claude mcp add --transport http grafana http://127.0.0.1:8003/mcp`; `mcp_config_http.json` example.
+- **Client registration:** `claude mcp add --transport http grafana http://127.0.0.1:8004/mcp`; `mcp_config_http.json` example.
 
 ## Logging
 
@@ -195,7 +195,7 @@ Offline unit tests with a fake gcx runner (subprocess mocked):
 - Package/script names: `grafana_mcp`, `grafana-mcp`, project `grafana-server-mcp`.
 - Datasource optional with auto-pick when unambiguous.
 - Log limit default 100 / max 1000; result cap ~50k chars; gcx timeout 60s.
-- Host port configurable, default 8003 (8000 is taken by bitbucket), bound to 127.0.0.1.
+- Host port configurable, default 8004 (8000–8003 are used by the sibling MCP servers), bound to 127.0.0.1.
 - Export script lives in this repo, run with `uv run`, keyring via PEP 723 deps.
 - Bridge networking by default; proxy vars and extra CA are optional add-ons for the VPN+proxy case.
 

@@ -220,6 +220,12 @@ def _gcx_error_message(*streams: str) -> str | None:
     return None
 
 
+def _cap(message: str) -> str:
+    if len(message) <= _ERROR_TAIL_CHARS:
+        return message
+    return message[:_ERROR_TAIL_CHARS] + "..."
+
+
 async def _kill(proc: asyncio.subprocess.Process) -> None:
     if proc.returncode is None:
         try:
@@ -300,6 +306,7 @@ class GcxRunner:
             if message is None:
                 tail = (stderr.strip() or stdout.strip())[-_ERROR_TAIL_CHARS:]
                 message = tail or "no output"
+            message = _cap(message)
             raise GcxError(self._scrub(f"gcx {command} failed (exit {proc.returncode}): {message}"))
 
         try:
@@ -308,5 +315,6 @@ class GcxRunner:
             raise GcxError(self._scrub(str(exc))) from None
         if isinstance(result, dict) and result.get("type") == "gcx.error":
             message = _gcx_error_message(json.dumps(result)) or "unknown gcx error"
+            message = _cap(message)
             raise GcxError(self._scrub(f"gcx {command} failed: {message}"))
         return result

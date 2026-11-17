@@ -341,3 +341,30 @@ async def test_cancel_kills_process(tmp_path: Path) -> None:
     start = time.monotonic()
     assert await runner.run("dev", "datasources list", {}) == {"data": [1, 2, 3]}
     assert time.monotonic() - start < 3
+
+
+async def test_error_message_is_capped(tmp_path: Path) -> None:
+    runner = _runner(write_fake_gcx(tmp_path, "error_huge"), tmp_path)
+    with pytest.raises(GcxError) as exc:
+        await runner.run("dev", "datasources list", {})
+    assert "Boom" in str(exc.value)
+    assert str(exc.value).endswith("...")
+    assert len(str(exc.value)) < 2500
+
+
+async def test_error_message_is_capped_on_exit_zero(tmp_path: Path) -> None:
+    runner = _runner(write_fake_gcx(tmp_path, "error_huge_ok"), tmp_path)
+    with pytest.raises(GcxError) as exc:
+        await runner.run("dev", "datasources list", {})
+    assert str(exc.value).endswith("...")
+    assert len(str(exc.value)) < 2500
+
+
+async def test_successful_result_is_scrubbed(tmp_path: Path) -> None:
+    secret = "glsa_supersecret_123"
+    runner = _runner(
+        write_fake_gcx(tmp_path, "ok_secret", secret=secret), tmp_path, secrets=(secret, "")
+    )
+    result = await runner.run("dev", "datasources list", {})
+    assert secret not in str(result)
+    assert "***" in str(result)

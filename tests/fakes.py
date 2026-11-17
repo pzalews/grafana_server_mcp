@@ -34,6 +34,21 @@ elif mode == "error_json":
         "error": {{"summary": "Datasource not found", "exitCode": 1, "details": "uid xyz"}},
     }}))
     sys.exit(1)
+elif mode == "error_huge":
+    print(json.dumps({{
+        "type": "gcx.error",
+        "schema_version": "1",
+        "error": {{"summary": "Boom", "exitCode": 1, "details": "x" * 10000}},
+    }}))
+    sys.exit(1)
+elif mode == "error_huge_ok":
+    print(json.dumps({{
+        "type": "gcx.error",
+        "schema_version": "1",
+        "error": {{"summary": "Boom", "exitCode": 1, "details": "x" * 10000}},
+    }}))
+elif mode == "ok_secret":
+    print(json.dumps({{"data": ["leaked " + secret]}}))
 elif mode == "stderr":
     sys.stderr.write("request failed: Authorization: Bearer " + secret + "\\n")
     sys.exit(2)

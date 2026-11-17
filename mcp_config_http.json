@@ -2,7 +2,7 @@
   "mcpServers": {
     "grafana": {
       "transport": "streamable-http",
-      "url": "http://localhost:8003/mcp/"
+      "url": "http://localhost:8004/mcp"
     }
   }
 }

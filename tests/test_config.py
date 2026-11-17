@@ -56,3 +56,20 @@ def test_redacted_has_no_token(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = Settings()  # type: ignore[call-arg]
     assert "t1" not in str(settings.redacted())
     assert "dev" in settings.redacted()["environments"]
+
+
+@pytest.mark.parametrize(
+    "var,value",
+    [
+        ("GRAFANA_MAX_CONCURRENCY", "0"),
+        ("GRAFANA_MAX_RESULT_CHARS", "999"),
+        ("GRAFANA_GCX_TIMEOUT", "0"),
+    ],
+)
+def test_settings_reject_out_of_range(
+    monkeypatch: pytest.MonkeyPatch, var: str, value: str
+) -> None:
+    monkeypatch.setenv("GRAFANA_ENVIRONMENTS", "dev")
+    monkeypatch.setenv(var, value)
+    with pytest.raises(ValueError):
+        Settings()  # type: ignore[call-arg]

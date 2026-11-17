@@ -11,3 +11,6 @@ dist/
 coverage.xml
 htmlcov/
 uv.lock
+.env.*
+!.env.example
+..env.*

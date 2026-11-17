@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from dotenv import dotenv_values
-from pydantic import BaseModel, SecretStr, field_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from grafana_mcp.exceptions import ConfigError
@@ -103,9 +103,9 @@ class Settings(BaseSettings):
 
     grafana_environments: str
     grafana_gcx_path: str = "gcx"
-    grafana_gcx_timeout: float = 60
-    grafana_max_concurrency: int = 4
-    grafana_max_result_chars: int = 50_000
+    grafana_gcx_timeout: float = Field(default=60, gt=0)
+    grafana_max_concurrency: int = Field(default=4, ge=1)
+    grafana_max_result_chars: int = Field(default=50_000, ge=1000)
     grafana_gcx_config_dir: str | None = None
     grafana_log_path: str | None = None
 

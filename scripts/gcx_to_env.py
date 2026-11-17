@@ -93,9 +93,11 @@ def collect(
         for unknown in sorted(only - set(contexts)):
             warnings.append(f"context '{unknown}' not found in gcx config")
     for name, ctx in contexts.items():
-        if name == "default" or (only is not None and name not in only):
+        if only is not None and name not in only:
             continue
         stack_name = (ctx or {}).get("stack")
+        if name == "default" and not stack_name:
+            continue  # gcx's placeholder context: nothing to export, nothing to warn about
         if not stack_name or stack_name not in stacks:
             warnings.append(f"context '{name}' skipped: no stack configured")
             continue

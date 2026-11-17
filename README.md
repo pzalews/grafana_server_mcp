@@ -36,17 +36,24 @@ Prerequisites: Docker or Podman with compose, `uv`, and a working host `gcx` con
 make env                          # all contexts
 make env ARGS="--contexts dev,prod --force"   # a subset / update an existing .env
 
-# 2. Build and start the container (published on 127.0.0.1:8003)
+# 2. Build and start the container (published on 127.0.0.1:8004)
 docker compose up -d --build      # or: make up  (Podman: see below)
 
 # 3. Register it with Claude Code
-claude mcp add --transport http grafana http://127.0.0.1:8003/mcp
+claude mcp add --transport http grafana http://127.0.0.1:8004/mcp
 ```
 
 `mcp_config_http.json` is an equivalent client configuration for other MCP clients.
-If host port 8003 is already taken, set `GRAFANA_MCP_PORT` in `.env` and use that port in
+If host port 8004 is already taken, set `GRAFANA_MCP_PORT` in `.env` and use that port in
 the client URL.
 Alternatively, copy `.env.example` to `.env`, `chmod 600 .env` and fill it in by hand.
+
+With `GRAFANA_LOG_PATH` set (the compose default), structured tool logs go to
+`/var/log/grafana-mcp/server.log` in the `mcp_logs` volume, not to `make logs`. Read them with:
+
+```bash
+docker compose exec grafana-mcp tail -f /var/log/grafana-mcp/server.log
+```
 
 Other targets: `make down`, `make logs`, `make docker-build`, `make check` (ruff + mypy + pytest).
 
@@ -66,7 +73,7 @@ with every non-alphanumeric character replaced by `_` (`stg-west` → `GRAFANA_S
 | `GRAFANA_MAX_RESULT_CHARS` | No | Result size cap (default `50000`) |
 | `GRAFANA_GCX_PATH` | No | gcx binary (default `gcx`; the image ships gcx 1.7.1) |
 | `GRAFANA_LOG_PATH` | No | Structured JSON log file (set by compose to a volume) |
-| `GRAFANA_MCP_PORT` | No | Host port for compose (default `8003`, always bound to `127.0.0.1`) |
+| `GRAFANA_MCP_PORT` | No | Host port for compose (default `8004`, always bound to `127.0.0.1`) |
 | `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY` | No | Passed through to gcx |
 | `GRAFANA_EXTRA_CA_FILE` | No | Host path of an extra PEM CA bundle (compose mounts it) |
 | `MCP_TRANSPORT` | No | `stdio` (default outside the image) or `http` |
