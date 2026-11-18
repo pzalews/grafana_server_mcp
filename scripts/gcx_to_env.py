@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = ["keyring>=25"]
 # ///
-"""Export the host's gcx configuration and keyring tokens to a .env for the MCP container.
+"""Export the host's gcx configuration and keyring tokens to grafana.env for the MCP container.
 
 Runs on the workstation: reads `gcx config view --raw -o json`, resolves `keychain:` token
 references through the OS keyring and writes GRAFANA_* variables. Tokens are never printed.
@@ -209,7 +209,9 @@ def _atomic_write(path: Path, content: str) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--contexts", help="comma-separated gcx contexts to export (default: all)")
-    ap.add_argument("--output", default=".env", help="output path (default: .env)")
+    ap.add_argument(
+        "--output", default="grafana.env", help="output path (default: grafana.env)"
+    )
     ap.add_argument("--force", action="store_true", help="update an existing output file")
     args = ap.parse_args(argv)
 

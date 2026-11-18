@@ -32,9 +32,9 @@ Prerequisites: Docker or Podman with compose, `uv`, and a working host `gcx` con
 (one gcx context per Grafana environment, authenticated with a service-account token).
 
 ```bash
-# 1. Export your gcx contexts and keyring tokens to .env (mode 0600, gitignored)
+# 1. Export your gcx contexts and keyring tokens to grafana.env (mode 0600, gitignored)
 make env                          # all contexts
-make env ARGS="--contexts dev,prod --force"   # a subset / update an existing .env
+make env ARGS="--contexts dev,prod --force"   # a subset / update an existing grafana.env
 
 # 2. Build and start the container (published on 127.0.0.1:8004)
 docker compose up -d --build      # or: make up  (Podman: see below)
@@ -46,15 +46,17 @@ copilot mcp add --transport http --timeout 120000 grafana http://127.0.0.1:8004/
 ```
 
 `mcp_config_http.json` is an equivalent client configuration for other MCP clients.
-If host port 8004 is already taken, set `GRAFANA_MCP_PORT` in `.env` and use that port in
-the client URL.
-Alternatively, copy `.env.example` to `.env`, `chmod 600 .env` and fill it in by hand.
+If host port 8004 is already taken, set `GRAFANA_MCP_PORT` in `.env` (read by compose for
+interpolation, not passed to the container) and use that port in the client URL.
+Alternatively, copy `grafana.env.example` to `grafana.env`, `chmod 600 grafana.env` and fill
+it in by hand. The file and service names match a multi-server compose stack, so
+`grafana.env` can be copied there as is.
 
 With `GRAFANA_LOG_PATH` set (the compose default), structured tool logs go to
-`/var/log/grafana-mcp/server.log` in the `mcp_logs` volume, not to `make logs`. Read them with:
+`/var/log/grafana-mcp/server.log` in the `grafana_logs` volume, not to `make logs`. Read them with:
 
 ```bash
-docker compose exec grafana-mcp tail -f /var/log/grafana-mcp/server.log
+docker compose exec grafana-mcp-1 tail -f /var/log/grafana-mcp/server.log
 ```
 
 Other targets: `make down`, `make logs`, `make docker-build`, `make check` (ruff + mypy + pytest).
@@ -96,7 +98,7 @@ make check
 make run-stdio            # or: make run-http  (127.0.0.1:8000)
 ```
 
-This uses the `gcx` on your `PATH` and the same `GRAFANA_*` variables (read from `.env`).
+This uses the `gcx` on your `PATH` and the same `GRAFANA_*` variables (read from `grafana.env`, or `.env`).
 
 ## Security
 
@@ -104,7 +106,7 @@ This uses the `gcx` on your `PATH` and the same `GRAFANA_*` variables (read from
   `127.0.0.1` only; do not publish the port beyond localhost.
 - **Read-only.** Only allowlisted read-only gcx subcommands can run. Still, use
   **Viewer-role service-account tokens** so the credentials themselves cannot write.
-- **Tokens.** `.env` is written with mode `0600` and is gitignored and excluded from the
+- **Tokens.** `grafana.env` is written with mode `0600` and is gitignored and excluded from the
   image build context. Inside the container the tokens live in the environment and in a
   gcx config on a tmpfs; anyone who can run `docker inspect` on your host can read them.
   This is acceptable for a single-user workstation, not for a shared host.
@@ -114,7 +116,7 @@ This uses the `gcx` on your `PATH` and the same `GRAFANA_*` variables (read from
 
 **Works with gcx on the host, but tools fail in the container** (timeouts, DNS or TLS errors):
 
-1. **VPN with an HTTP proxy:** set `HTTPS_PROXY` (and `NO_PROXY`) in `.env`; they are passed to gcx.
+1. **VPN with an HTTP proxy:** set `HTTPS_PROXY` (and `NO_PROXY`) in `grafana.env`; they are passed to gcx.
 2. **TLS-intercepting proxy:** set `GRAFANA_EXTRA_CA_FILE=/path/to/ca.pem` in `.env`. The
    entrypoint appends it to a copy of the system CA bundle and sets `SSL_CERT_FILE`.
 3. **Last resort, host networking:** use the commented `network_mode: host` block in

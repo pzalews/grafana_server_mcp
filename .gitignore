@@ -13,4 +13,6 @@ htmlcov/
 uv.lock
 .env.*
 !.env.example
+grafana.env
+.grafana.env.*
 ..env.*

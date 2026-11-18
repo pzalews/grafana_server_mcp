@@ -1,3 +1,6 @@
+import os
+from pathlib import Path
+
 import pytest
 
 from grafana_mcp.config import Settings, env_prefix, load_environments
@@ -73,3 +76,16 @@ def test_settings_reject_out_of_range(
     monkeypatch.setenv(var, value)
     with pytest.raises(ValueError):
         Settings()  # type: ignore[call-arg]
+
+
+def test_settings_read_grafana_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    for k in [k for k in os.environ if k.startswith("GRAFANA_")]:
+        monkeypatch.delenv(k)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "grafana.env").write_text(
+        "GRAFANA_ENVIRONMENTS=dev\n"
+        "GRAFANA_DEV_URL=https://grafana.example.com\n"
+        "GRAFANA_DEV_TOKEN=glsa_x\n"
+    )
+    envs = Settings().environments()  # type: ignore[call-arg]
+    assert [e.name for e in envs] == ["dev"]

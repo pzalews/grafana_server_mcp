@@ -1,6 +1,9 @@
 .env
 .env.*
 !.env.example
+grafana.env
+grafana.env.example
+.grafana.env.*
 .git
 .github
 .superpowers

@@ -1,7 +1,8 @@
 services:
-  grafana-mcp:
+  grafana-mcp-1:
     build: .
-    env_file: .env
+    # GRAFANA_ENVIRONMENTS + GRAFANA_<ENV>_URL/TOKEN/ORG_ID (dynamic names, so an env_file)
+    env_file: grafana.env
     # Published on localhost only: the MCP endpoint has no authentication.
     ports:
       - "127.0.0.1:${GRAFANA_MCP_PORT:-8004}:8000"
@@ -12,7 +13,7 @@ services:
     volumes:
       # Optional extra CA bundle (TLS-intercepting proxy); /dev/null means "none".
       - "${GRAFANA_EXTRA_CA_FILE:-/dev/null}:/run/extra-ca.pem:ro"
-      - mcp_logs:/var/log/grafana-mcp
+      - grafana_logs:/var/log/grafana-mcp
     restart: unless-stopped
     healthcheck:
       # CMD-SHELL with one string: Podman splits exec-form arguments on spaces.
@@ -44,4 +45,4 @@ services:
     #   - MCP_HTTP_PORT=8004
 
 volumes:
-  mcp_logs:
+  grafana_logs:

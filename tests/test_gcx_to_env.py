@@ -250,3 +250,12 @@ def test_collect_keyring_error_names_context_only() -> None:
     msg = str(exc.value)
     assert "prod" in msg
     assert "v2:a:b" not in msg
+
+
+def test_main_default_output_is_grafana_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_main(monkeypatch)
+    monkeypatch.chdir(tmp_path)
+    assert m.main(["--contexts", "dev"]) == 0
+    assert [p.name for p in tmp_path.iterdir()] == ["grafana.env"]

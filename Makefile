@@ -32,7 +32,7 @@ docker-build:
 docker-run:
 	docker compose up
 
-# Export the host's gcx contexts and keyring tokens to .env (mode 0600)
+# Export the host's gcx contexts and keyring tokens to grafana.env (mode 0600)
 env:
 	uv run scripts/gcx_to_env.py $(ARGS)
 

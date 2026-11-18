@@ -94,9 +94,13 @@ def _brief(exc: ValueError) -> str:
     return "invalid value"
 
 
+# Later files win; process environment variables win over both.
+ENV_FILES = (".env", "grafana.env")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -114,7 +118,9 @@ class Settings(BaseSettings):
     mcp_http_port: int = 8000
 
     def environments(self) -> list[Environment]:
-        merged: dict[str, str] = {k: v for k, v in dotenv_values(".env").items() if v is not None}
+        merged: dict[str, str] = {}
+        for path in ENV_FILES:
+            merged.update({k: v for k, v in dotenv_values(path).items() if v is not None})
         merged.update(os.environ)
         merged["GRAFANA_ENVIRONMENTS"] = self.grafana_environments
         return load_environments(merged)
