@@ -41,6 +41,8 @@ docker compose up -d --build      # or: make up  (Podman: see below)
 
 # 3. Register it with Claude Code
 claude mcp add --transport http grafana http://127.0.0.1:8004/mcp
+#    ...or with GitHub Copilot CLI (then check with `copilot mcp list`)
+copilot mcp add --transport http --timeout 120000 grafana http://127.0.0.1:8004/mcp
 ```
 
 `mcp_config_http.json` is an equivalent client configuration for other MCP clients.
