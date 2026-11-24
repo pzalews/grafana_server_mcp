@@ -63,11 +63,16 @@ async def test_list_datasources_filters_type(ctx: Any, runner: FakeRunner) -> No
     ]
 
 
-async def test_list_datasources_both_types_and_name(ctx: Any, runner: FakeRunner) -> None:
-    result = await list_datasources(ctx, "dev", name="o")
-    assert [c[2] for c in runner.calls] == [
-        {"type": "prometheus", "name": "o"},
-        {"type": "loki", "name": "o"},
-    ]
-    assert [d["uid"] for d in result["result"]] == ["prom-uid-1", "loki-uid-1"]
+async def test_list_datasources_all_types_single_call(ctx: Any, runner: FakeRunner) -> None:
+    runner.responses["datasources list"]["datasources"].append(
+        {"uid": "cw-uid", "name": "cloudwatch", "type": "cloudwatch", "default": False}
+    )
+    result = await list_datasources(ctx, "dev")
+    assert runner.calls == [("dev", "datasources list", {})]
+    assert [d["type"] for d in result["result"]] == ["prometheus", "loki", "cloudwatch"]
     assert result["result"][0]["isDefault"] is True
+
+
+async def test_list_datasources_name_filter(ctx: Any, runner: FakeRunner) -> None:
+    await list_datasources(ctx, "dev", name="o")
+    assert runner.calls == [("dev", "datasources list", {"name": "o"})]

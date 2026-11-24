@@ -84,9 +84,23 @@ def test_allowlist_is_read_only() -> None:
     assert ALLOWED_COMMANDS
     for cmd in ALLOWED_COMMANDS:
         words = cmd.split()
-        assert len(words) == 2
+        assert len(words) == 2 or words[:2] == ["resources", "get"]
         for bad in FORBIDDEN_WORDS:
             assert bad not in words, cmd
+
+
+def test_build_argv_resources_get_folders() -> None:
+    assert build_argv("gcx", "prod", "resources get folders", {}) == [
+        "gcx",
+        "resources",
+        "get",
+        "folders",
+        "--context=prod",
+        "-o",
+        "json",
+    ]
+    with pytest.raises(InvalidArgumentError):
+        build_argv("gcx", "prod", "resources get folders", {"name": "x"})
 
 
 def test_hostile_expr_is_single_flag_value() -> None:

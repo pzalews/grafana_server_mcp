@@ -1,0 +1,13 @@
+{
+  "items": [
+    {"apiVersion": "folder.grafana.app/v1beta1", "kind": "Folder",
+     "metadata": {"name": "child-uid", "namespace": "default",
+                  "annotations": {"grafana.app/folder": "parent-uid"}},
+     "spec": {"title": "nginx"},
+     "url": "https://grafana.example.com/dashboards/f/child-uid"},
+    {"apiVersion": "folder.grafana.app/v1beta1", "kind": "Folder",
+     "metadata": {"name": "parent-uid", "namespace": "default"},
+     "spec": {"title": "Infra"},
+     "url": "https://grafana.example.com/dashboards/f/parent-uid"}
+  ]
+}

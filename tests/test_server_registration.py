@@ -8,6 +8,7 @@ async def test_create_server_registers_tools() -> None:
     assert {
         "list_environments",
         "list_datasources",
+        "list_folders",
         "metrics_list_names",
         "metrics_labels",
         "metrics_query",

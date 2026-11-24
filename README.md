@@ -1,8 +1,9 @@
 # Grafana Server MCP
 
-Read-only FastMCP server for Grafana metrics (Prometheus) and logs (Loki). It wraps the
-[`gcx`](https://github.com/grafana/gcx) CLI, supports several Grafana environments at once
-(e.g. `dev`, `stg-west`, `prod`) and runs as a localhost-only Docker/Podman compose service.
+Read-only FastMCP server for Grafana metrics (Prometheus) and logs (Loki), plus datasource
+and folder listings. It wraps the [`gcx`](https://github.com/grafana/gcx) CLI, supports
+several Grafana environments at once (e.g. `dev`, `stg-west`, `prod`) and runs as a
+localhost-only Docker/Podman compose service.
 
 Only an allowlist of read-only `gcx` subcommands is ever executed; there are no write tools.
 
@@ -15,7 +16,8 @@ and may be omitted when the environment has exactly one datasource of the needed
 | Tool | Description |
 |---|---|
 | `list_environments` | Configured environments (name, url, org_id). Never returns tokens. |
-| `list_datasources` | Prometheus and Loki datasources of an environment (uid, name, type, isDefault). |
+| `list_datasources` | All datasources of an environment (uid, name, type, isDefault); optional `type` / `name` filters. |
+| `list_folders` | Grafana folders of an environment (uid, title, parentUid, url). |
 | `metrics_list_names` | Prometheus metric names, optionally filtered. |
 | `metrics_labels` | Prometheus label names, or the values of one label. |
 | `metrics_query` | PromQL query: instant by default, range with `since` or `from`/`to`. |

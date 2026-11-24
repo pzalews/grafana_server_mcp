@@ -59,7 +59,8 @@ def create_server() -> FastMCP:
     mcp = FastMCP(
         name="Grafana MCP",
         instructions=(
-            "Read-only access to Grafana metrics (Prometheus) and logs (Loki) via gcx. "
+            "Read-only access to Grafana metrics (Prometheus) and logs (Loki) via gcx, plus "
+            "datasource and folder listings. "
             "Always pass `env` exactly as returned by list_environments. "
             "Workflow: list_environments → list_datasources → metrics_list_names / "
             "metrics_labels / logs_labels to discover names and labels → metrics_query / "

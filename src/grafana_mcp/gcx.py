@@ -34,6 +34,7 @@ Command = Literal[
     "logs labels",
     "logs query",
     "logs metrics",
+    "resources get folders",
 ]
 
 FlagValue = str | int | list[str] | None
@@ -46,6 +47,8 @@ _ALLOWED_FLAGS: dict[str, frozenset[str]] = {
     "logs labels": frozenset({"datasource", "label", "query"}),
     "logs query": frozenset({"datasource", "expr", "since", "from", "to", "limit"}),
     "logs metrics": frozenset({"datasource", "expr", "since", "from", "to", "step"}),
+    # The resource kind is part of the fixed command, never user input.
+    "resources get folders": frozenset(),
 }
 
 ALLOWED_COMMANDS: frozenset[str] = frozenset(_ALLOWED_FLAGS)
